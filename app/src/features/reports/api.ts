@@ -1,0 +1,19 @@
+import { fetcher } from "@/lib/api-client"
+import type { ReportData, ReportParams } from "./types"
+
+export const reportApi = {
+  generate: (params: ReportParams) => {
+    const query = new URLSearchParams()
+    query.set("type", params.type)
+    query.set("startDate", params.startDate)
+    query.set("endDate", params.endDate)
+    if (params.store) query.set("store", params.store)
+    if (params.currency) query.set("currency", params.currency)
+    if (params.timezoneOffset !== undefined) {
+      query.set("timezoneOffset", String(params.timezoneOffset))
+    }
+    return fetcher<{ success: boolean; data: ReportData }>(
+      `/api/reports?${query.toString()}`
+    )
+  },
+}

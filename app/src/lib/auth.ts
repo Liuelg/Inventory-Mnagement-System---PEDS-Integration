@@ -1,0 +1,151 @@
+export type AuthUser = {
+  id: string
+  email?: string
+  phone?: string
+  name: string
+  role: string
+  store?: string
+}
+
+type AuthResponse = {
+  token: string
+  user: AuthUser
+}
+
+export type LoginPayload = {
+  identifier: string
+  password: string
+}
+
+export type RegisterPayload = {
+  name: string
+  email?: string
+  phone?: string
+  password: string
+  role: string
+  store?: string
+}
+
+export type ChangePasswordPayload = {
+  currentPassword: string
+  newPassword: string
+}
+
+const API_BASE = import.meta.env.VITE_API_URL ?? ""
+const TOKEN_STORAGE_KEY = "auth_token"
+const USER_STORAGE_KEY = "auth_user"
+
+function parseJson<T>(value: string | null): T | null {
+  if (!value) {
+    return null
+  }
+
+  try {
+    return JSON.parse(value) as T
+  } catch {
+    return null
+  }
+}
+
+export function getAuthToken() {
+  return localStorage.getItem(TOKEN_STORAGE_KEY)
+}
+
+export function getStoredUser() {
+  return parseJson<AuthUser>(localStorage.getItem(USER_STORAGE_KEY))
+}
+
+export function setAuthSession(token: string, user: AuthUser) {
+  localStorage.setItem(TOKEN_STORAGE_KEY, token)
+  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+}
+
+export function clearAuthSession() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY)
+  localStorage.removeItem(USER_STORAGE_KEY)
+}
+
+async function authRequest(path: string, options?: RequestInit): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+    ...options,
+  })
+
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) {
+    const message =
+      payload?.message || payload?.error || `Request failed: ${response.status}`
+    throw new Error(message)
+  }
+
+  return payload as AuthResponse
+}
+
+export async function register(payload: RegisterPayload) {
+  const data = await authRequest("/api/auth/register", {
+    body: JSON.stringify(payload),
+  })
+  setAuthSession(data.token, data.user)
+  return data.user
+}
+
+export async function login(payload: LoginPayload) {
+  const data = await authRequest("/api/auth/login", {
+    body: JSON.stringify(payload),
+  })
+  setAuthSession(data.token, data.user)
+  return data.user
+}
+
+export async function changePassword(payload: ChangePasswordPayload) {
+  const token = getAuthToken()
+  const response = await fetch(`${API_BASE}/api/auth/change-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    const message =
+      data?.message || data?.error || `Request failed: ${response.status}`
+    throw new Error(message)
+  }
+
+  return data
+}
+
+export async function fetchCurrentUser() {
+  const token = getAuthToken()
+  if (!token) {
+    return null
+  }
+
+  const response = await fetch(`${API_BASE}/api/auth/me`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) {
+    clearAuthSession()
+    return null
+  }
+
+  const user = payload?.user as AuthUser | undefined
+  if (!user) {
+    clearAuthSession()
+    return null
+  }
+
+  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+  return user
+}
