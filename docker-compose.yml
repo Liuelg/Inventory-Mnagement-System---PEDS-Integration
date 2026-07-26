@@ -44,7 +44,7 @@ services:
     container_name: inventory-nginx-2
     restart: always
     ports:
-      - "8080:80"
+      - "8081:80"
     volumes:
       - ./uploads:/usr/share/nginx/html/uploads:ro
     depends_on:

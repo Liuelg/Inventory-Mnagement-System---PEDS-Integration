@@ -15,6 +15,9 @@ FROM nginx:alpine
 # Copy built frontend assets
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# Create uploads directory (will be overridden by volume mount, but ensures nginx doesn't fail if missing)
+RUN mkdir -p /usr/share/nginx/html/uploads
+
 # Copy nginx configuration
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 

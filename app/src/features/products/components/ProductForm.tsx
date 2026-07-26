@@ -37,6 +37,9 @@ type ProductFormState = {
   currency: string
   previousPrice: string
   tags: string
+  code: string
+  pedsItemId: string
+  taxType: string
 }
 
 const initialState: ProductFormState = {
@@ -48,6 +51,9 @@ const initialState: ProductFormState = {
   currency: "USD",
   previousPrice: "",
   tags: "",
+  code: "",
+  pedsItemId: "",
+  taxType: "4",
 }
 
 function getId(value: string | { _id: string } | undefined | null): string {
@@ -74,6 +80,9 @@ function getInitialState(editing?: Product | null): ProductFormState {
         ? String(editing.previous_prices)
         : "",
     tags: editing.tags?.join(", ") ?? "",
+    code: editing.code ?? "",
+    pedsItemId: editing.pedsItemId ?? "",
+    taxType: String(editing.taxType ?? 4),
   }
 }
 
@@ -86,6 +95,7 @@ function toPayload(form: ProductFormState, isAdmin: boolean): ProductPayload {
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean)
+  const taxType = Number(form.taxType)
 
   const payload: ProductPayload = {
     name: form.name.trim(),
@@ -93,6 +103,9 @@ function toPayload(form: ProductFormState, isAdmin: boolean): ProductPayload {
     category: form.category.trim() || undefined,
     subCategory: form.subCategory.trim() || undefined,
     tags: tags.length ? tags : undefined,
+    code: form.code.trim() || undefined,
+    pedsItemId: form.pedsItemId.trim() || undefined,
+    taxType: Number.isNaN(taxType) ? undefined : taxType,
   }
 
   if (isAdmin) {
@@ -270,6 +283,44 @@ export function ProductForm({
               </div>
             </div>
           )}
+
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium text-muted-foreground mb-3">
+              PEDS POS Mapping
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label htmlFor="product-code">Item Code</Label>
+                <Input
+                  id="product-code"
+                  placeholder="e.g. 01"
+                  value={form.code}
+                  onChange={(e) => setField("code", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="product-peds-id">PEDS Item ID</Label>
+                <Input
+                  id="product-peds-id"
+                  placeholder="PEDS identifier"
+                  value={form.pedsItemId}
+                  onChange={(e) => setField("pedsItemId", e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2 mt-3">
+              <Label htmlFor="product-tax-type">Tax Type</Label>
+              <select
+                id="product-tax-type"
+                value={form.taxType}
+                onChange={(e) => setField("taxType", e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="4">Non-Taxable</option>
+                <option value="1">Taxable</option>
+              </select>
+            </div>
+          </div>
 
           <div className="flex justify-end gap-2">
             <Button

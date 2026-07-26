@@ -23,6 +23,10 @@ export type Sale = {
   processedBy: string | { _id: string; name?: string; email?: string }
   date_time: string
   invoiceNumber: string
+  source?: string
+  pedsStatus?: string
+  pedsInvoiceNo?: string
+  pedsFsInvoiceNo?: string
   createdAt?: string
   updatedAt?: string
 }

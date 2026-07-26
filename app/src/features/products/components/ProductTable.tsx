@@ -89,6 +89,15 @@ export function ProductTable({ products, isLoading, onEdit }: ProductTableProps)
           : product.subCategory?.name || "-",
     },
     {
+      header: "Code",
+      cell: (product) => (
+        <span className="font-mono text-xs">
+          {product.code || product.pedsItemId || "-"}
+        </span>
+      ),
+      className: "w-[100px]",
+    },
+    {
       header: "Price",
       cell: (product) => formatPrice(product),
       className: "whitespace-nowrap",

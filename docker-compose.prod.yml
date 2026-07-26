@@ -17,6 +17,8 @@ services:
       
     expose:
       - "3000"
+    volumes:
+      - ./uploads:/app/uploads
     depends_on:
       mongo:
         condition: service_healthy
@@ -59,6 +61,8 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:80"
+    volumes:
+      - ./uploads:/usr/share/nginx/html/uploads:ro
     depends_on:
       - backend
     networks:

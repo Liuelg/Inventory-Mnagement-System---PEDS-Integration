@@ -177,7 +177,14 @@ export function SalesTable({ sales, lineItems, isLoading, onEdit, displayCurrenc
     {
       header: "Invoice",
       cell: (sale) => (
-        <span className="font-medium">{sale.invoiceNumber || "-"}</span>
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium">{sale.invoiceNumber || "-"}</span>
+          {sale.source === "peds" && (
+            <span className="inline-flex items-center rounded-sm bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 w-fit">
+              PEDS
+            </span>
+          )}
+        </div>
       ),
       className: "w-[72px] sm:w-[120px]",
     },
@@ -459,6 +466,28 @@ export function SalesTable({ sales, lineItems, isLoading, onEdit, displayCurrenc
                     {getTotalItems(detailSale)}
                   </span>
                 </div>
+                <div>
+                  <span className="text-muted-foreground">Source:</span>{" "}
+                  <span className="font-medium">
+                    {detailSale.source === "peds" ? "PEDS POS" : "IMS"}
+                  </span>
+                </div>
+                {detailSale.pedsFsInvoiceNo && (
+                  <div>
+                    <span className="text-muted-foreground">PEDS FS No:</span>{" "}
+                    <span className="font-medium">
+                      {detailSale.pedsFsInvoiceNo}
+                    </span>
+                  </div>
+                )}
+                {detailSale.pedsStatus && (
+                  <div>
+                    <span className="text-muted-foreground">PEDS Status:</span>{" "}
+                    <span className="font-medium capitalize">
+                      {detailSale.pedsStatus.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="mt-2">

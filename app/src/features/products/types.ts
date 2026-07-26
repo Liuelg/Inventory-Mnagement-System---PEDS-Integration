@@ -18,6 +18,9 @@ export type Product = {
   previous_prices?: number
   tags?: string[]
   image?: string
+  code?: string
+  pedsItemId?: string
+  taxType?: number
 }
 
 export type ProductPayload = {
@@ -29,4 +32,7 @@ export type ProductPayload = {
   previous_prices?: number
   tags?: string[]
   image?: string
+  code?: string
+  pedsItemId?: string
+  taxType?: number
 }

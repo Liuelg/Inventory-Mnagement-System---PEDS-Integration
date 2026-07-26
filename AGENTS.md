@@ -328,16 +328,28 @@ All routes are mounted in `api/src/app.js`. Every route except `/api/auth` and `
 - `previous_prices` (Number)
 - `tags` (Array of String)
 - `image` (String)
+- `code` (String, unique, sparse)
+- `pedsItemId` (String, unique, sparse)
+- `taxType` (Number, default `4`)
 
 ### Sale
 
-- `items` — array of `{ item_id: ObjectId ref Products, quantity: Number, price: Number }`
+- `items` — array of `{ item_id: ObjectId ref Products, quantity: Number, eur: Number, usd: Number, birr: Number, visa: Number, image: String, pedsItemIdentifierId: String }`
 - `totalAmount` (Number, required)
+- `rates` — `{ eur: Number, usd: Number, birr: Number, visa: Number }`
 - `customerName` (String)
+- `salesName` (String)
 - `store` (ObjectId ref Store, required)
-- `processedBy` (ObjectId ref User, required)
+- `processedBy` (ObjectId ref User)
 - `date_time` (Date, required, default `Date.now`)
 - `invoiceNumber` (String, required, unique)
+- `pedsInvoiceNo` (String)
+- `pedsFsInvoiceNo` (String)
+- `pedsGuid` (String)
+- `pedsStatus` (String, enum: `['not_paid', 'fully_paid', 'partially_paid', 'voided']`)
+- `pedsMachineId` (String)
+- `source` (String, enum: `['ims', 'peds']`, default: `'ims'`)
+- `unresolvedPedsItems` (Array of Mixed)
 - Timestamps enabled
 
 ### GoodIn (Stock In)
@@ -357,7 +369,13 @@ All routes are mounted in `api/src/app.js`. Every route except `/api/auth` and `
 - `code` (String, required, unique, uppercase, trimmed)
 - `address` (String, required)
 - `manager_id` (ObjectId ref User)
-- `items` — array of `{ item_id: ObjectId ref Products, quantity: Number, price: Number }`
+- `items` — array of `{ item_id: ObjectId ref Products, quantity: Number, price: Number, group: ObjectId ref ProductGroup }`
+- `pedsEnabled` (Boolean, default `false`)
+- `pedsBaseUrl` (String)
+- `pedsPosId` (String)
+- `pedsMachineId` (String)
+- `pedsUsername` (String)
+- `pedsPassword` (String)
 
 ### Category
 
@@ -502,6 +520,85 @@ features/<name>/
 - Icon library: `lucide`
 - Components are added with `npx shadcn@latest add <component>`.
 - Imported as: `import { Button } from "@/components/ui/button"`.
+
+---
+
+## PEDS POS Integration
+
+The IMS integrates with **PEDSPOS** (Professional Electronic Data Systems) — a local desktop POS system that runs on Windows PCs inside each store. PEDS connects to physical cash registers and exposes a REST API on `http://localhost:2010`.
+
+### How It Works
+
+| Direction | Mechanism | Purpose |
+|-----------|-----------|---------|
+| **IMS → PEDS** | Proxy API calls (`/api/peds/:storeId/*`) | Push pre-sales, check invoice status, void invoices |
+| **PEDS → IMS** | Callback webhooks (`POST /api/peds/callback`) | Notify IMS when a sale is printed/paid at the register |
+
+### Data Flow
+
+1. **Cashier sells on PEDS** → receipt prints → PEDS calls your `callback` URL
+2. IMS backend receives the payload, maps PEDS items to IMS products, creates a `Sale` document, and deducts store inventory
+3. If a sale is deleted in IMS, the backend also attempts to void the matching invoice in PEDS (fire-and-forget)
+
+### Backend Endpoints
+
+| Route | Auth | Description |
+|-------|------|-------------|
+| `POST /api/peds/callback` | Basic Auth (`PEDS_CALLBACK_SECRET`) | Receives `CONFIRMPAYMENT` from PEDS |
+| `POST /api/peds/callback/void` | Basic Auth | Receives void events from PEDS |
+| `POST /api/peds/:storeId/hold-sales` | JWT | Proxy to PEDS `Add` |
+| `POST /api/peds/:storeId/invoice-status` | JWT | Proxy to PEDS `GetInvoiceStatus` |
+| `POST /api/peds/:storeId/paid-status` | JWT | Proxy to PEDS `GetPaidStatus` |
+| `POST /api/peds/:storeId/sales-by-time` | JWT | Proxy to PEDS `GetSalesByTime` |
+| `POST /api/peds/:storeId/void` | JWT | Proxy to PEDS `Void` |
+
+### Environment Variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `PEDS_CALLBACK_SECRET` | `pedsapi:secret123` | `username:password` PEDS uses in Basic Auth when calling your callback. Configure this exact value inside PEDS's callback settings. |
+
+### Per-Store Configuration
+
+Each store document now contains PEDS fields:
+- `pedsEnabled` (Boolean)
+- `pedsBaseUrl` — e.g. `http://192.168.1.50:2010`
+- `pedsPosId` — e.g. `POS-001`
+- `pedsMachineId` — e.g. `AAD0001230`
+- `pedsUsername` / `pedsPassword` — PEDS API credentials
+
+Configure these in the **Stores** UI by checking "Enable PEDS POS Integration".
+
+### Product Mapping
+
+Products now have:
+- `code` — your internal item code
+- `pedsItemId` — the exact `ItemIdentifierId` used inside PEDS (must match)
+- `taxType` — `1` (Taxable) or `4` (NonTaxable)
+
+PEDS items are matched to IMS products in this priority:
+1. `pedsItemId` exact match
+2. Mongo `_id` fallback match
+3. If no match → stored in `unresolvedPedsItems` on the sale
+
+### Network Reachability
+
+**The critical constraint:** PEDS runs on `localhost:2010` inside each store. Your backend must be able to reach it for proxy calls.
+
+| Scenario | Solution |
+|----------|----------|
+| Backend is on the **same LAN** as PEDS | Use the local IP as `pedsBaseUrl` (e.g. `http://192.168.1.50:2010`) |
+| Backend is **cloud-hosted** (VPS/DigitalOcean) | Option A: VPN/tunnel from store to cloud (WireGuard, OpenVPN, Tailscale) |
+| | Option B: Small local relay (a Raspberry Pi or Windows service that forwards requests) |
+| | Option C: ngrok / reverse tunnel exposing `localhost:2010` (not recommended for production) |
+
+**Callback direction (PEDS → IMS)** only requires PEDS to have internet access and a public URL for your IMS backend — this works regardless of where PEDS is located.
+
+### Limitations
+
+- **No product catalog sync API** — PEDS does not expose endpoints to push new products into its database. Products must be aligned manually or via PEDS's own admin interface.
+- **Single currency per item** — PEDS sends `TotalAmount` in whatever currency the POS is configured for (typically ETB). IMS maps this to the `birr` field.
+- **Local-only API** — PEDS REST API is not designed for remote access; reachability must be solved at the network layer.
 
 ---
 

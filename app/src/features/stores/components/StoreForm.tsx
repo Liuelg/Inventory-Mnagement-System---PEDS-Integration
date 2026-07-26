@@ -23,12 +23,24 @@ type StoreFormState = {
   name: string
   code: string
   address: string
+  pedsEnabled: boolean
+  pedsBaseUrl: string
+  pedsPosId: string
+  pedsMachineId: string
+  pedsUsername: string
+  pedsPassword: string
 }
 
 const initialState: StoreFormState = {
   name: "",
   code: "",
   address: "",
+  pedsEnabled: false,
+  pedsBaseUrl: "",
+  pedsPosId: "",
+  pedsMachineId: "",
+  pedsUsername: "",
+  pedsPassword: "",
 }
 
 function getManagerName(store: Store): string {
@@ -51,6 +63,12 @@ function getInitialState(editing?: Store | null): StoreFormState {
     name: editing.name ?? "",
     code: editing.code ?? "",
     address: editing.address ?? "",
+    pedsEnabled: editing.pedsEnabled ?? false,
+    pedsBaseUrl: editing.pedsBaseUrl ?? "",
+    pedsPosId: editing.pedsPosId ?? "",
+    pedsMachineId: editing.pedsMachineId ?? "",
+    pedsUsername: editing.pedsUsername ?? "",
+    pedsPassword: editing.pedsPassword ?? "",
   }
 }
 
@@ -59,6 +77,12 @@ function toPayload(form: StoreFormState): StorePayload {
     name: form.name.trim(),
     code: form.code.trim().toUpperCase(),
     address: form.address.trim(),
+    pedsEnabled: form.pedsEnabled,
+    pedsBaseUrl: form.pedsBaseUrl.trim() || undefined,
+    pedsPosId: form.pedsPosId.trim() || undefined,
+    pedsMachineId: form.pedsMachineId.trim() || undefined,
+    pedsUsername: form.pedsUsername.trim() || undefined,
+    pedsPassword: form.pedsPassword || undefined,
   }
 }
 
@@ -164,6 +188,73 @@ export function StoreForm({
               />
             </div>
           ) : null}
+
+          <div className="border-t pt-4 mt-2">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={form.pedsEnabled}
+                onChange={(e) => setField("pedsEnabled", e.target.checked)}
+                className="h-4 w-4"
+              />
+              Enable PEDS POS Integration
+            </label>
+          </div>
+
+          {form.pedsEnabled && (
+            <div className="flex flex-col gap-3 rounded-md border p-3">
+              <div className="grid gap-2">
+                <Label htmlFor="peds-base-url">PEDS Base URL</Label>
+                <Input
+                  id="peds-base-url"
+                  placeholder="http://192.168.1.50:2010"
+                  value={form.pedsBaseUrl}
+                  onChange={(e) => setField("pedsBaseUrl", e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="peds-pos-id">POS ID</Label>
+                  <Input
+                    id="peds-pos-id"
+                    placeholder="POS-001"
+                    value={form.pedsPosId}
+                    onChange={(e) => setField("pedsPosId", e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="peds-machine-id">Machine ID</Label>
+                  <Input
+                    id="peds-machine-id"
+                    placeholder="AAD0001230"
+                    value={form.pedsMachineId}
+                    onChange={(e) => setField("pedsMachineId", e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="peds-username">Username</Label>
+                  <Input
+                    id="peds-username"
+                    placeholder="PEDSAPI"
+                    value={form.pedsUsername}
+                    onChange={(e) => setField("pedsUsername", e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="peds-password">Password</Label>
+                  <Input
+                    id="peds-password"
+                    type="password"
+                    placeholder="••••••"
+                    value={form.pedsPassword}
+                    onChange={(e) => setField("pedsPassword", e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button
