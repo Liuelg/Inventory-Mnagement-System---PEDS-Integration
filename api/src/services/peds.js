@@ -137,6 +137,16 @@ export async function voidInvoice(store, invoiceNo) {
 }
 
 /**
+ * Test connectivity to PEDS by calling Exists with a dummy invoice.
+ * A valid HTTP response (even "not found") proves the tunnel, URL,
+ * and credentials are correct.
+ * @param {object} store
+ */
+export async function testConnection(store) {
+  return pedsRequest(store, 'Exists', 'TEST-CONN')
+}
+
+/**
  * Build a PEDS HoldSales payload from IMS sale data.
  * @param {object} store
  * @param {object} sale - IMS sale document (populated items)

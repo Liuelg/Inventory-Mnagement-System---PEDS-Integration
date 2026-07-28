@@ -347,4 +347,24 @@ router.post('/:storeId/void', authMiddleware, async (req, res) => {
   }
 })
 
+router.post('/:storeId/test-connection', authMiddleware, async (req, res) => {
+  try {
+    const store = await getStoreOr404(req, res)
+    if (!store) return
+
+    const result = await peds.testConnection(store)
+    res.json({
+      connected: true,
+      pedsResponse: result,
+      message: result?.Message || 'PEDS responded successfully',
+    })
+  } catch (err) {
+    res.status(502).json({
+      connected: false,
+      message: err.message,
+      pedsResponse: err.pedsResponse || null,
+    })
+  }
+})
+
 export default router

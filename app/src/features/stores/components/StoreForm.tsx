@@ -9,8 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useCreateStore, useUpdateStore } from "../hooks"
+import { useCreateStore, useUpdateStore, useTestPedsConnection } from "../hooks"
 import type { Store, StorePayload } from "../types"
+import { Loader2, CheckCircle2, XCircle } from "lucide-react"
 
 interface StoreFormProps {
   open: boolean
@@ -95,7 +96,12 @@ export function StoreForm({
   const [form, setForm] = useState<StoreFormState>(() => getInitialState(editing))
   const create = useCreateStore()
   const update = useUpdateStore()
+  const testPeds = useTestPedsConnection()
   const [error, setError] = useState<string | null>(null)
+  const [testResult, setTestResult] = useState<{
+    type: "success" | "error"
+    message: string
+  } | null>(null)
 
   function setField<Key extends keyof StoreFormState>(
     key: Key,
@@ -124,6 +130,27 @@ export function StoreForm({
     create.mutate(payload, {
       onSuccess: () => onSuccess?.(),
       onError: (err) => setError(err.message),
+    })
+  }
+
+  function handleTestConnection() {
+    if (!editing) return
+    setTestResult(null)
+    testPeds.mutate(editing._id, {
+      onSuccess: (data) => {
+        setTestResult({
+          type: "success",
+          message: data.connected
+            ? `Connected — ${data.message}`
+            : `PEDS responded but connection failed — ${data.message}`,
+        })
+      },
+      onError: (err) => {
+        setTestResult({
+          type: "error",
+          message: err.message || "Failed to reach PEDS. Check the Base URL and credentials.",
+        })
+      },
     })
   }
 
@@ -253,6 +280,40 @@ export function StoreForm({
                   />
                 </div>
               </div>
+
+              {editing && (
+                <div className="flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-fit"
+                    disabled={testPeds.isPending || !form.pedsBaseUrl.trim()}
+                    onClick={handleTestConnection}
+                  >
+                    {testPeds.isPending && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Test PEDS Connection
+                  </Button>
+                  {testResult && (
+                    <div
+                      className={`flex items-center gap-2 text-sm ${
+                        testResult.type === "success"
+                          ? "text-green-600"
+                          : "text-destructive"
+                      }`}
+                    >
+                      {testResult.type === "success" ? (
+                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      ) : (
+                        <XCircle className="h-4 w-4 shrink-0" />
+                      )}
+                      {testResult.message}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
